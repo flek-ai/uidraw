@@ -15,7 +15,7 @@ import { TTDDialogPanel } from "./TTDDialogPanel";
 import { TTDDialogPanels } from "./TTDDialogPanels";
 import {
   MermaidToExcalidrawLibProps,
-  convertMermaidToExcalidraw,
+  // convertMermaidToExcalidraw,
   insertToEditor,
   saveMermaidDataToStorage,
 } from "./common";
@@ -39,7 +39,7 @@ const rateLimitsAtom = atom<{
 } | null>(null);
 
 const ttdGenerationAtom = atom<{
-  generatedResponse: string | null;
+  value: string | null;
   prompt: string | null;
 } | null>(null);
 
@@ -47,10 +47,9 @@ type OnTestSubmitRetValue = {
   rateLimit?: number | null;
   rateLimitRemaining?: number | null;
 } & (
-  | { generatedResponse: string | undefined; error?: null | undefined }
+  | { value: string | undefined; error?: null | undefined }
   | {
       error: Error;
-      generatedResponse?: null | undefined;
     }
 );
 
@@ -102,7 +101,7 @@ export const TTDDialogBase = withInternalFallback(
     ) => {
       setText(event.target.value);
       setTtdGeneration((s) => ({
-        generatedResponse: s?.generatedResponse ?? null,
+        value: s?.value ?? null,
         prompt: event.target.value,
       }));
     };
@@ -142,12 +141,22 @@ export const TTDDialogBase = withInternalFallback(
 
         trackEvent("ai", "generate", "ttd");
 
-        const { generatedResponse, error, rateLimit, rateLimitRemaining } =
-          await rest.onTextSubmit(prompt);
+        const response = await rest.onTextSubmit(prompt);
 
-        if (typeof generatedResponse === "string") {
+        // const platform = response.platform;
+        // const type = response.type;
+
+        const { error, rateLimit, rateLimitRemaining } = response;
+        if (error) {
+          setError(error);
+          return;
+        }
+
+        const value = response.value;
+
+        if (typeof value === "string") {
           setTtdGeneration((s) => ({
-            generatedResponse,
+            value,
             prompt: s?.prompt ?? null,
           }));
         }
@@ -156,40 +165,36 @@ export const TTDDialogBase = withInternalFallback(
           setRateLimits({ rateLimit, rateLimitRemaining });
         }
 
-        if (error) {
-          setError(error);
-          return;
-        }
-        if (!generatedResponse) {
+        if (!value) {
           setError(new Error("Generation failed"));
           return;
         }
 
-        try {
-          await convertMermaidToExcalidraw({
-            canvasRef: someRandomDivRef,
-            data,
-            mermaidToExcalidrawLib,
-            setError,
-            mermaidDefinition: generatedResponse,
-          });
-          trackEvent("ai", "mermaid parse success", "ttd");
-        } catch (error: any) {
-          console.info(
-            `%cTTD mermaid render errror: ${error.message}`,
-            "color: red",
-          );
-          console.info(
-            `>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\nTTD mermaid definition render errror: ${error.message}`,
-            "color: yellow",
-          );
-          trackEvent("ai", "mermaid parse failed", "ttd");
-          setError(
-            new Error(
-              "Generated an invalid diagram :(. You may also try a different prompt.",
-            ),
-          );
-        }
+        // try {
+        //   await convertMermaidToExcalidraw({
+        //     canvasRef: someRandomDivRef,
+        //     data,
+        //     mermaidToExcalidrawLib,
+        //     setError,
+        //     mermaidDefinition: value,
+        //   });
+        //   trackEvent("ai", "mermaid parse success", "ttd");
+        // } catch (error: any) {
+        //   console.info(
+        //     `%cTTD mermaid render errror: ${error.message}`,
+        //     "color: red",
+        //   );
+        //   console.info(
+        //     `>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\nTTD mermaid definition render errror: ${error.message}`,
+        //     "color: yellow",
+        //   );
+        //   trackEvent("ai", "mermaid parse failed", "ttd");
+        //   setError(
+        //     new Error(
+        //       "Generated an invalid diagram :(. You may also try a different prompt.",
+        //     ),
+        //   );
+        // }
       } catch (error: any) {
         let message: string | undefined = error.message;
         if (!message || message === "Failed to fetch") {
@@ -204,24 +209,25 @@ export const TTDDialogBase = withInternalFallback(
     const refOnGenerate = useRef(onGenerate);
     refOnGenerate.current = onGenerate;
 
-    const [mermaidToExcalidrawLib, setMermaidToExcalidrawLib] =
-      useState<MermaidToExcalidrawLibProps>({
-        loaded: false,
-        api: import("@excalidraw/mermaid-to-excalidraw"),
-      });
+    // const [mermaidToExcalidrawLib, setMermaidToExcalidrawLib] =
+    //   useState<MermaidToExcalidrawLibProps>({
+    //     loaded: false,
+    //     api: import("@excalidraw/mermaid-to-excalidraw"),
+    //   });
 
-    useEffect(() => {
-      const fn = async () => {
-        await mermaidToExcalidrawLib.api;
-        setMermaidToExcalidrawLib((prev) => ({ ...prev, loaded: true }));
-      };
-      fn();
-    }, [mermaidToExcalidrawLib.api]);
+    // useEffect(() => {
+    //   const fn = async () => {
+    //     await mermaidToExcalidrawLib.api;
+    //     setMermaidToExcalidrawLib((prev) => ({ ...prev, loaded: true }));
+    //   };
+    //   fn();
+    // }, [mermaidToExcalidrawLib.api]);
 
     const data = useRef<{
       elements: readonly NonDeletedExcalidrawElement[];
       files: BinaryFiles | null;
     }>({ elements: [], files: null });
+
 
     const [error, setError] = useState<Error | null>(null);
 
@@ -265,11 +271,11 @@ export const TTDDialogBase = withInternalFallback(
             </TTDDialogTabTriggers>
           )}
 
-          <TTDDialogTab className="ttd-dialog-content" tab="mermaid">
+          {/* <TTDDialogTab className="ttd-dialog-content" tab="mermaid">
             <MermaidToExcalidraw
               mermaidToExcalidrawLib={mermaidToExcalidrawLib}
             />
-          </TTDDialogTab>
+          </TTDDialogTab> */}
           {!("__fallback" in rest) && (
             <TTDDialogTab className="ttd-dialog-content" tab="text-to-diagram">
               <div className="ttd-dialog-desc">
@@ -313,19 +319,14 @@ export const TTDDialogBase = withInternalFallback(
                   }}
                   renderSubmitShortcut={() => <TTDDialogSubmitShortcut />}
                   renderBottomRight={() => {
-                    if (typeof ttdGeneration?.generatedResponse === "string") {
+                    if (typeof ttdGeneration?.value === "string") {
                       return (
                         <div
                           className="excalidraw-link"
                           style={{ marginLeft: "auto", fontSize: 14 }}
                           onClick={() => {
-                            if (
-                              typeof ttdGeneration?.generatedResponse ===
-                              "string"
-                            ) {
-                              saveMermaidDataToStorage(
-                                ttdGeneration.generatedResponse,
-                              );
+                            if (typeof ttdGeneration?.value === "string") {
+                              saveMermaidDataToStorage(ttdGeneration.value);
                               setAppState({
                                 openDialog: { name: "ttd", tab: "mermaid" },
                               });
@@ -377,10 +378,10 @@ export const TTDDialogBase = withInternalFallback(
                     icon: ArrowRightIcon,
                   }}
                 >
-                  <TTDDialogOutput
-                    canvasRef={someRandomDivRef}
-                    error={error}
-                    loaded={mermaidToExcalidrawLib.loaded}
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: ttdGeneration?.value ?? "",
+                    }}
                   />
                 </TTDDialogPanel>
               </TTDDialogPanels>
