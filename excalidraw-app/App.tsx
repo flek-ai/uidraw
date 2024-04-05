@@ -792,18 +792,24 @@ const ExcalidrawWrapper = () => {
         <AppFooter />
         <TTDDialog
           onTextSubmit={async (input) => {
+            const generationType = "create";
+            const token = import.meta.env.VITE_APP_AI_BACKEND_TOKEN;
+            const history: string[] = [];
             try {
               const response = await fetch(
-                `${
-                  import.meta.env.VITE_APP_AI_BACKEND
-                }/v1/ai/text-to-diagram/generate`,
+                `${import.meta.env.VITE_APP_AI_BACKEND}/text2html`,
                 {
                   method: "POST",
                   headers: {
                     Accept: "application/json",
                     "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
                   },
-                  body: JSON.stringify({ prompt: input }),
+                  body: JSON.stringify({
+                    description: input,
+                    generationType,
+                    history,
+                  }),
                 },
               );
 
@@ -835,13 +841,23 @@ const ExcalidrawWrapper = () => {
 
                 throw new Error(json.message || "Generation failed...");
               }
+              const platform = json.platform;
+              const type = json.type;
+              const value = json.value;
+              const viewport_size = json.viewport_size;
 
-              const generatedResponse = json.generatedResponse;
-              if (!generatedResponse) {
+              if (!platform || !type || !value || !viewport_size) {
                 throw new Error("Generation failed...");
               }
 
-              return { generatedResponse, rateLimit, rateLimitRemaining };
+              return {
+                platform,
+                type,
+                value,
+                viewport_size,
+                rateLimit,
+                rateLimitRemaining,
+              };
             } catch (err: any) {
               throw new Error("Request failed");
             }
