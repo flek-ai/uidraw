@@ -44,6 +44,8 @@ import {
 } from "./icons";
 import { KEYS } from "../keys";
 import { useTunnels } from "../context/tunnels";
+import { Button } from "./Button";
+import { TTDDialogInput } from "./TTDDialog/TTDDialogInput";
 
 export const SelectedShapeActions = ({
   appState,
@@ -415,6 +417,34 @@ export const ZoomActions = ({
     </Stack.Row>
   </Stack.Col>
 );
+
+export const PromptBox = () => {
+  const [text, setText] = useState("");
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setText(e.target.value);
+  };
+  return (
+    <>
+      <div className="PromptBox-Wrapper">
+        <TTDDialogInput
+          onChange={handleTextChange}
+          input={text}
+          placeholder={"Describe what you want to see..."}
+          onKeyboardSubmit={() => {
+            // refOnGenerate.current();
+          }}
+        />
+        <Button
+          className="PromptBox-Button excalidraw-button ttd-dialog-panel-button"
+          onSelect={() => {}}
+          title="Generate"
+        >
+          Generate
+        </Button>
+      </div>
+    </>
+  );
+};
 
 export const UndoRedoActions = ({
   renderAction,
